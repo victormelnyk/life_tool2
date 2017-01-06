@@ -150,6 +150,51 @@ CREATE DOMAIN t_tinyint_id AS smallint NOT NULL
 ALTER DOMAIN t_tinyint_id OWNER TO lt_admin;
 
 --
+-- Name: fn_random_i(); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_random_i() RETURNS t_integer
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN trunc(random() * 2^32) - 2^31;
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_random_i() OWNER TO lt_admin;
+
+--
+-- Name: fn_random_id(); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_random_id() RETURNS t_id
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN 1 + trunc(random() * (2^31 - 1));
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_random_id() OWNER TO lt_admin;
+
+--
+-- Name: fn_random_id_range(t_id, t_id); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_random_id_range(afrom t_id, ato t_id) RETURNS t_id
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN afrom + trunc(random() * (ato - afrom + 1));
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_random_id_range(afrom t_id, ato t_id) OWNER TO lt_admin;
+
+--
 -- PostgreSQL database dump complete
 --
 
