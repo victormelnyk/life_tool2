@@ -1,0 +1,11 @@
+version: '2'
+services:
+  postgres:
+    image: postgres:9.6
+    container_name: postgres-life-tool
+    ports:
+      - 2040:5432
+    volumes:
+      - /data/postgresql/life_tool:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=pgpass
