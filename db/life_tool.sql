@@ -904,6 +904,48 @@ ALTER TABLE ONLY users
 SET search_path = mn, pg_catalog;
 
 --
+-- Name: accounts t_accounts_bi; Type: TRIGGER; Schema: mn; Owner: lt_admin
+--
+
+CREATE TRIGGER t_accounts_bi BEFORE INSERT ON accounts FOR EACH ROW EXECUTE PROCEDURE t_accounts_bi();
+
+
+--
+-- Name: categories t_categories_bi; Type: TRIGGER; Schema: mn; Owner: lt_admin
+--
+
+CREATE TRIGGER t_categories_bi BEFORE INSERT ON categories FOR EACH ROW EXECUTE PROCEDURE t_categories_bi();
+
+
+--
+-- Name: currencies t_currencies_bi; Type: TRIGGER; Schema: mn; Owner: lt_admin
+--
+
+CREATE TRIGGER t_currencies_bi BEFORE INSERT ON currencies FOR EACH ROW EXECUTE PROCEDURE t_currencies_bi();
+
+
+--
+-- Name: descriptions t_descriptions_bi; Type: TRIGGER; Schema: mn; Owner: lt_admin
+--
+
+CREATE TRIGGER t_descriptions_bi BEFORE INSERT ON descriptions FOR EACH ROW EXECUTE PROCEDURE t_descriptions_bi();
+
+
+--
+-- Name: operations t_operations_bi; Type: TRIGGER; Schema: mn; Owner: lt_admin
+--
+
+CREATE TRIGGER t_operations_bi BEFORE INSERT ON operations FOR EACH ROW EXECUTE PROCEDURE t_operations_bi();
+
+
+--
+-- Name: transactions t_transactions_bi; Type: TRIGGER; Schema: mn; Owner: lt_admin
+--
+
+CREATE TRIGGER t_transactions_bi BEFORE INSERT ON transactions FOR EACH ROW EXECUTE PROCEDURE t_transactions_bi();
+
+
+--
 -- Name: accounts fk_accounts__currencies; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
 --
 
