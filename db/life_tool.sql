@@ -470,9 +470,9 @@ CREATE FUNCTION t_categories_bi() RETURNS trigger
     AS $$
 BEGIN
   NEW.owner_id = us.fn_get_logged_user_id();
-  NEW.category_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+  NEW.category_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME,
     'owner_id = ' || NEW.owner_id);
-  NEW.is_deleted = FALSE;  
+  NEW.is_deleted = FALSE;
 
   RETURN NEW;
 END;
@@ -507,7 +507,7 @@ CREATE FUNCTION t_descriptions_bi() RETURNS trigger
     AS $$
 BEGIN
   NEW.owner_id = us.fn_get_logged_user_id();
-  NEW.description_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+  NEW.description_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME,
     'owner_id = ' || NEW.owner_id);
 
   RETURN NEW;
@@ -526,14 +526,14 @@ CREATE FUNCTION t_operations_bi() RETURNS trigger
     AS $$
 BEGIN
   NEW.owner_id = us.fn_get_logged_user_id();
-  NEW.lno = df.fn_get_next_field_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 'lno', 
+  NEW.lno = df.fn_get_next_field_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 'lno',
     'owner_id = ' || NEW.owner_id);
-  
+
   NEW.is_deleted = FALSE;
   NEW.date_created = df.fn_utc_timestamp();
-  
+
   NEW.sys_operation_id = df.fn_get_next_field_value(
-    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_operation_id');  
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_operation_id');
 
   RETURN NEW;
 END;
@@ -553,16 +553,16 @@ BEGIN
   NEW.owner_id = us.fn_get_logged_user_id();
   NEW.transaction_id = df.fn_get_next_random_pk_value(
     TG_TABLE_SCHEMA, TG_TABLE_NAME, '', 1000, 9999);
-  NEW.lno = df.fn_get_next_field_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 'lno', 
+  NEW.lno = df.fn_get_next_field_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 'lno',
     'owner_id = ' || NEW.owner_id);
 
   IF NEW.is_real IS NULL THEN
     NEW.is_real = TRUE;
-  END IF; 
-  
+  END IF;
+
   NEW.is_deleted = FALSE;
   NEW.date_created = df.fn_utc_timestamp();
-  
+
   NEW.sys_transaction_id = df.fn_get_next_field_value(
     TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_transaction_id');
 
