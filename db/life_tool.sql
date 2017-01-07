@@ -650,6 +650,83 @@ $$;
 ALTER FUNCTION us.fn_get_logged_user_id() OWNER TO lt_admin;
 
 --
+-- Name: fn_logon(df.t_string_short, t_password); Type: FUNCTION; Schema: us; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_logon(alogin df.t_string_short, apassword t_password, OUT rlogon_result df.t_tinyint_id, OUT ruser_id df.t_id) RETURNS record
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  --logon result
+  LR_OK CONSTANT df.t_tinyint_id := 1;
+  LR_LOGIN_OR_PASSWOR_IS_INCORRECT CONSTANT df.t_tinyint_id := 2;
+  LR_ACCOUNT_HAS_BEEN_LOCKED CONSTANT df.t_tinyint_id := 3;
+  LR_ACCOUNT_IS_DISABLED CONSTANT df.t_tinyint_id := 4;
+  
+  ACCOUNT_LOCK_TIMEOUT CONSTANT TIME := TIME '00:15';
+  MAX_BAD_LOGON_ATTEMPTS CONSTANT df.t_tinyint := 3;
+  
+  lnow df.t_timestamp := df.fn_utc_timestamp();
+  luser record; 
+BEGIN
+  DROP TABLE IF EXISTS tmp_logged_users;
+  
+  SELECT U.user_id, U.password, U.is_active, U.is_deleted, U.date_lock
+  INTO luser 
+  FROM us.users U
+  WHERE U.login = alogin;
+  
+  ruser_id := luser.user_id;
+  IF (ruser_id IS NULL) THEN
+    rlogon_result = LR_LOGIN_OR_PASSWOR_IS_INCORRECT;
+    RETURN;
+  END IF;
+  
+  IF (luser.date_lock IS NOT NULL) THEN
+    IF ((lnow - luser.date_lock) < ACCOUNT_LOCK_TIMEOUT) THEN
+      UPDATE us.users
+      SET 
+        bad_logon_attempts = bad_logon_attempts + 1,
+        date_last_bad_logon_attempt = lnow
+      WHERE user_id = ruser_id;
+      rlogon_result := LR_ACCOUNT_HAS_BEEN_LOCKED;
+      RETURN;
+    ELSE
+      UPDATE us.users
+      SET 
+        bad_logon_attempts = 0,
+        date_lock = NULL
+      WHERE user_id = ruser_id;
+    end if;
+  end if;  
+  
+  IF (luser.password <> apassword) THEN
+    rlogon_result := LR_LOGIN_OR_PASSWOR_IS_INCORRECT;
+  ELSEIF (NOT luser.is_active OR luser.is_deleted) THEN
+    rlogon_result := LR_ACCOUNT_IS_DISABLED;
+  ELSE
+    rlogon_result := LR_OK;
+  END IF;
+  
+  IF (rlogon_result = LR_OK) THEN
+    PERFORM us.fn_set_logged_user_id(ruser_id);
+  ELSE
+    UPDATE us.users
+    SET 
+      bad_logon_attempts = bad_logon_attempts + 1,
+      date_last_bad_logon_attempt = lnow,
+      date_lock = CASE WHEN (bad_logon_attempts + 1 >= MAX_BAD_LOGON_ATTEMPTS) 
+        AND (rlogon_result = LR_LOGIN_OR_PASSWOR_IS_INCORRECT) 
+        THEN lnow ELSE NULL END
+    WHERE user_id = ruser_id;
+  END IF;    
+END;
+$$;
+
+
+ALTER FUNCTION us.fn_logon(alogin df.t_string_short, apassword t_password, OUT rlogon_result df.t_tinyint_id, OUT ruser_id df.t_id) OWNER TO lt_admin;
+
+--
 -- Name: fn_set_logged_owner_id(df.t_id); Type: FUNCTION; Schema: us; Owner: lt_admin
 --
 
@@ -712,6 +789,83 @@ $$;
 
 
 ALTER FUNCTION us.fn_set_logged_user_id(auser_id df.t_id) OWNER TO lt_admin;
+
+--
+-- Name: fn_timestamp_to_local_str(df.t_timestamp); Type: FUNCTION; Schema: us; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_timestamp_to_local_str(avalue df.t_timestamp) RETURNS df.t_string_short
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN (
+    SELECT df.fn_timestamp_to_local_str(avalue, U.time_zone) 
+    FROM us.users U
+    WHERE U.user_id = us.fn_get_logged_user_id());
+END;
+$$;
+
+
+ALTER FUNCTION us.fn_timestamp_to_local_str(avalue df.t_timestamp) OWNER TO lt_admin;
+
+--
+-- Name: fn_timestamp_to_utc_timestamp(df.t_timestamp); Type: FUNCTION; Schema: us; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_timestamp_to_utc_timestamp(avalue df.t_timestamp) RETURNS df.t_timestamp
+    LANGUAGE plpgsql
+    AS $$
+BEGIN  
+  RETURN (
+    SELECT df.fn_timestamp_to_utc_timestamp(avalue, U.time_zone) 
+    FROM us.users U
+    WHERE U.user_id = us.fn_get_logged_user_id());
+END;
+$$;
+
+
+ALTER FUNCTION us.fn_timestamp_to_utc_timestamp(avalue df.t_timestamp) OWNER TO lt_admin;
+
+--
+-- Name: t_computers_bi(); Type: FUNCTION; Schema: us; Owner: lt_admin
+--
+
+CREATE FUNCTION t_computers_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.user_id = us.fn_get_logged_user_id();
+  NEW.computer_id = df.fn_get_next_pk_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME,
+    'user_id = ' || NEW.user_id);
+
+  NEW.date_created = df.fn_utc_timestamp();
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION us.t_computers_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_users_bi(); Type: FUNCTION; Schema: us; Owner: lt_admin
+--
+
+CREATE FUNCTION t_users_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.bad_logon_attempts = 0;
+  NEW.is_deleted = FALSE;
+  NEW.date_created  = df.fn_utc_timestamp();
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION us.t_users_bi() OWNER TO lt_admin;
 
 SET search_path = mn, pg_catalog;
 
@@ -1032,6 +1186,24 @@ CREATE TRIGGER t_operations_bi BEFORE INSERT ON operations FOR EACH ROW EXECUTE 
 
 CREATE TRIGGER t_transactions_bi BEFORE INSERT ON transactions FOR EACH ROW EXECUTE PROCEDURE t_transactions_bi();
 
+
+SET search_path = us, pg_catalog;
+
+--
+-- Name: computers t_computers_bi; Type: TRIGGER; Schema: us; Owner: lt_admin
+--
+
+CREATE TRIGGER t_computers_bi BEFORE INSERT ON computers FOR EACH ROW EXECUTE PROCEDURE t_computers_bi();
+
+
+--
+-- Name: users t_users_bi; Type: TRIGGER; Schema: us; Owner: lt_admin
+--
+
+CREATE TRIGGER t_users_bi BEFORE INSERT ON users FOR EACH ROW EXECUTE PROCEDURE t_users_bi();
+
+
+SET search_path = mn, pg_catalog;
 
 --
 -- Name: accounts fk_accounts__currencies; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
