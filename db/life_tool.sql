@@ -24,6 +24,24 @@ CREATE SCHEMA df;
 ALTER SCHEMA df OWNER TO lt_admin;
 
 --
+-- Name: mn; Type: SCHEMA; Schema: -; Owner: lt_admin
+--
+
+CREATE SCHEMA mn;
+
+
+ALTER SCHEMA mn OWNER TO lt_admin;
+
+--
+-- Name: us; Type: SCHEMA; Schema: -; Owner: lt_admin
+--
+
+CREATE SCHEMA us;
+
+
+ALTER SCHEMA us OWNER TO lt_admin;
+
+--
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
 --
 
@@ -148,6 +166,28 @@ CREATE DOMAIN t_tinyint_id AS smallint NOT NULL
 
 
 ALTER DOMAIN t_tinyint_id OWNER TO lt_admin;
+
+SET search_path = us, pg_catalog;
+
+--
+-- Name: t_password; Type: DOMAIN; Schema: us; Owner: lt_admin
+--
+
+CREATE DOMAIN t_password AS character varying(60);
+
+
+ALTER DOMAIN t_password OWNER TO lt_admin;
+
+--
+-- Name: t_random_part; Type: DOMAIN; Schema: us; Owner: lt_admin
+--
+
+CREATE DOMAIN t_random_part AS character varying(22);
+
+
+ALTER DOMAIN t_random_part OWNER TO lt_admin;
+
+SET search_path = df, pg_catalog;
 
 --
 -- Name: fn_get_next_field_value(name, name, name, t_string_large); Type: FUNCTION; Schema: df; Owner: lt_admin
@@ -381,6 +421,365 @@ $$;
 
 
 ALTER FUNCTION df.fn_utc_timestamp() OWNER TO lt_admin;
+
+SET search_path = mn, pg_catalog;
+
+SET default_tablespace = '';
+
+SET default_with_oids = false;
+
+--
+-- Name: accounts; Type: TABLE; Schema: mn; Owner: lt_admin
+--
+
+CREATE TABLE accounts (
+    owner_id df.t_id NOT NULL,
+    account_id df.t_id NOT NULL,
+    currency_id df.t_id NOT NULL,
+    name df.t_string_short NOT NULL
+);
+
+
+ALTER TABLE accounts OWNER TO lt_admin;
+
+--
+-- Name: categories; Type: TABLE; Schema: mn; Owner: lt_admin
+--
+
+CREATE TABLE categories (
+    owner_id df.t_id NOT NULL,
+    category_id df.t_id NOT NULL,
+    parent_id df.t_id,
+    name df.t_string_short NOT NULL,
+    is_deleted df.t_boolean NOT NULL
+);
+
+
+ALTER TABLE categories OWNER TO lt_admin;
+
+--
+-- Name: currencies; Type: TABLE; Schema: mn; Owner: lt_admin
+--
+
+CREATE TABLE currencies (
+    owner_id df.t_id NOT NULL,
+    currency_id df.t_id NOT NULL,
+    name df.t_string_short NOT NULL
+);
+
+
+ALTER TABLE currencies OWNER TO lt_admin;
+
+--
+-- Name: descriptions; Type: TABLE; Schema: mn; Owner: lt_admin
+--
+
+CREATE TABLE descriptions (
+    owner_id df.t_id NOT NULL,
+    description_id df.t_id NOT NULL,
+    description df.t_text NOT NULL
+);
+
+
+ALTER TABLE descriptions OWNER TO lt_admin;
+
+--
+-- Name: operation_types; Type: TABLE; Schema: mn; Owner: lt_admin
+--
+
+CREATE TABLE operation_types (
+    operation_type_id df.t_tinyint_id NOT NULL,
+    name df.t_string_short NOT NULL
+);
+
+
+ALTER TABLE operation_types OWNER TO lt_admin;
+
+--
+-- Name: operations; Type: TABLE; Schema: mn; Owner: lt_admin
+--
+
+CREATE TABLE operations (
+    owner_id df.t_id NOT NULL,
+    transaction_id df.t_id NOT NULL,
+    operation_type_id df.t_tinyint_id NOT NULL,
+    account_id df.t_id NOT NULL,
+    sum df.t_money NOT NULL,
+    lno df.t_integer NOT NULL,
+    is_deleted df.t_boolean NOT NULL,
+    date_created df.t_timestamp NOT NULL,
+    sys_operation_id df.t_id NOT NULL
+);
+
+
+ALTER TABLE operations OWNER TO lt_admin;
+
+--
+-- Name: transactions; Type: TABLE; Schema: mn; Owner: lt_admin
+--
+
+CREATE TABLE transactions (
+    owner_id df.t_id NOT NULL,
+    transaction_id df.t_id NOT NULL,
+    category_id df.t_id NOT NULL,
+    description_id df.t_id,
+    is_real df.t_boolean NOT NULL,
+    lno df.t_integer NOT NULL,
+    date_transaction df.t_timestamp NOT NULL,
+    is_deleted df.t_boolean NOT NULL,
+    date_created df.t_timestamp NOT NULL,
+    sys_transaction_id df.t_id NOT NULL
+);
+
+
+ALTER TABLE transactions OWNER TO lt_admin;
+
+SET search_path = us, pg_catalog;
+
+--
+-- Name: users; Type: TABLE; Schema: us; Owner: lt_admin
+--
+
+CREATE TABLE users (
+    user_id df.t_id NOT NULL,
+    login df.t_string_short NOT NULL,
+    name df.t_string_large NOT NULL,
+    password t_password NOT NULL,
+    random_part t_random_part NOT NULL,
+    is_deleted df.t_boolean NOT NULL,
+    date_created df.t_timestamp NOT NULL,
+    date_lock df.t_timestamp,
+    date_last_bad_logon_attempt df.t_id,
+    date_last_logon df.t_timestamp,
+    bad_logon_attempts df.t_integer NOT NULL,
+    is_active df.t_boolean NOT NULL,
+    time_zone df.t_string_short
+);
+
+
+ALTER TABLE users OWNER TO lt_admin;
+
+SET search_path = mn, pg_catalog;
+
+--
+-- Name: accounts pk_accounts; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY accounts
+    ADD CONSTRAINT pk_accounts PRIMARY KEY (owner_id, account_id);
+
+
+--
+-- Name: categories pk_categories; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY categories
+    ADD CONSTRAINT pk_categories PRIMARY KEY (owner_id, category_id);
+
+
+--
+-- Name: currencies pk_currencies; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY currencies
+    ADD CONSTRAINT pk_currencies PRIMARY KEY (owner_id, currency_id);
+
+
+--
+-- Name: descriptions pk_descriptions; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY descriptions
+    ADD CONSTRAINT pk_descriptions PRIMARY KEY (owner_id, description_id);
+
+
+--
+-- Name: operation_types pk_operation_types; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY operation_types
+    ADD CONSTRAINT pk_operation_types PRIMARY KEY (operation_type_id);
+
+
+--
+-- Name: operations pk_operations; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY operations
+    ADD CONSTRAINT pk_operations PRIMARY KEY (owner_id, transaction_id, operation_type_id);
+
+
+--
+-- Name: transactions pk_transactions; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY transactions
+    ADD CONSTRAINT pk_transactions PRIMARY KEY (owner_id, transaction_id);
+
+
+--
+-- Name: accounts uq_accounts__name; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY accounts
+    ADD CONSTRAINT uq_accounts__name UNIQUE (owner_id, name);
+
+
+--
+-- Name: categories uq_categories__name; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY categories
+    ADD CONSTRAINT uq_categories__name UNIQUE (owner_id, name);
+
+
+--
+-- Name: currencies uq_currencies__name; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY currencies
+    ADD CONSTRAINT uq_currencies__name UNIQUE (owner_id, name);
+
+
+--
+-- Name: descriptions uq_descriptions__description; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY descriptions
+    ADD CONSTRAINT uq_descriptions__description UNIQUE (owner_id, description);
+
+
+--
+-- Name: operations uq_operations__acount_id; Type: CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY operations
+    ADD CONSTRAINT uq_operations__acount_id UNIQUE (owner_id, transaction_id, account_id);
+
+
+SET search_path = us, pg_catalog;
+
+--
+-- Name: users pk_users; Type: CONSTRAINT; Schema: us; Owner: lt_admin
+--
+
+ALTER TABLE ONLY users
+    ADD CONSTRAINT pk_users PRIMARY KEY (user_id);
+
+
+--
+-- Name: users uq_users; Type: CONSTRAINT; Schema: us; Owner: lt_admin
+--
+
+ALTER TABLE ONLY users
+    ADD CONSTRAINT uq_users UNIQUE (login);
+
+
+SET search_path = mn, pg_catalog;
+
+--
+-- Name: accounts fk_accounts__currencies; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY accounts
+    ADD CONSTRAINT fk_accounts__currencies FOREIGN KEY (owner_id, currency_id) REFERENCES currencies(owner_id, currency_id);
+
+
+--
+-- Name: accounts fk_accounts__users; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY accounts
+    ADD CONSTRAINT fk_accounts__users FOREIGN KEY (owner_id) REFERENCES us.users(user_id);
+
+
+--
+-- Name: categories fk_categories__categories; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY categories
+    ADD CONSTRAINT fk_categories__categories FOREIGN KEY (owner_id, parent_id) REFERENCES categories(owner_id, category_id);
+
+
+--
+-- Name: categories fk_categories__users; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY categories
+    ADD CONSTRAINT fk_categories__users FOREIGN KEY (owner_id) REFERENCES us.users(user_id);
+
+
+--
+-- Name: currencies fk_currencies__users; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY currencies
+    ADD CONSTRAINT fk_currencies__users FOREIGN KEY (owner_id) REFERENCES us.users(user_id);
+
+
+--
+-- Name: descriptions fk_descriptions__users; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY descriptions
+    ADD CONSTRAINT fk_descriptions__users FOREIGN KEY (owner_id) REFERENCES us.users(user_id);
+
+
+--
+-- Name: operations fk_operations__accounts; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY operations
+    ADD CONSTRAINT fk_operations__accounts FOREIGN KEY (owner_id, account_id) REFERENCES accounts(owner_id, account_id);
+
+
+--
+-- Name: operations fk_operations__operation_types; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY operations
+    ADD CONSTRAINT fk_operations__operation_types FOREIGN KEY (operation_type_id) REFERENCES operation_types(operation_type_id);
+
+
+--
+-- Name: operations fk_operations__transactions; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY operations
+    ADD CONSTRAINT fk_operations__transactions FOREIGN KEY (owner_id, transaction_id) REFERENCES transactions(owner_id, transaction_id);
+
+
+--
+-- Name: operations fk_operations__users; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY operations
+    ADD CONSTRAINT fk_operations__users FOREIGN KEY (owner_id) REFERENCES us.users(user_id);
+
+
+--
+-- Name: transactions fk_transactions__categories; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY transactions
+    ADD CONSTRAINT fk_transactions__categories FOREIGN KEY (owner_id, category_id) REFERENCES categories(owner_id, category_id);
+
+
+--
+-- Name: transactions fk_transactions__descriptions; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY transactions
+    ADD CONSTRAINT fk_transactions__descriptions FOREIGN KEY (owner_id, description_id) REFERENCES descriptions(owner_id, description_id);
+
+
+--
+-- Name: transactions fk_transactions__users; Type: FK CONSTRAINT; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE ONLY transactions
+    ADD CONSTRAINT fk_transactions__users FOREIGN KEY (owner_id) REFERENCES us.users(user_id);
+
 
 --
 -- PostgreSQL database dump complete
