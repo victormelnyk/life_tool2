@@ -185,7 +185,7 @@ CREATE FUNCTION fn_get_next_pk_value(atable_schema name, atable_name name, acond
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  RETURN df.fn_get_next_field_value(atable_schema, atable_name, 
+  RETURN df.fn_get_next_field_value(atable_schema, atable_name,
     df.fn_get_pk_field_name(atable_schema, atable_name), acondition);
 END;
 $$;
@@ -212,21 +212,21 @@ BEGIN
     IF (afrom <> 0) AND (ato <> 0) THEN
       lresult = df.fn_random_id_range(afrom, ato);
     ELSE
-      lresult = df.fn_random_id();  
+      lresult = df.fn_random_id();
     END IF;
-    
-    lsql = 'SELECT EXISTS(SELECT * FROM ' || 
+
+    lsql = 'SELECT EXISTS(SELECT * FROM ' ||
       atable_schema || '.' || atable_name || ' WHERE ';
-      
-    IF acondition <> '' THEN 
+
+    IF acondition <> '' THEN
       lsql = lsql || acondition || ' AND ';
-    END IF;  
-    
+    END IF;
+
     lsql = lsql || lfield_name || ' = ' || lresult || ')';
-    
+
     EXECUTE lsql
     INTO lis_exist;
-        
+
     IF NOT lis_exist THEN
       EXIT;
     END IF;
