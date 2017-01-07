@@ -424,6 +424,155 @@ ALTER FUNCTION df.fn_utc_timestamp() OWNER TO lt_admin;
 
 SET search_path = mn, pg_catalog;
 
+--
+-- Name: fn_clear(); Type: FUNCTION; Schema: mn; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_clear() RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  DELETE FROM mn.operations;
+  DELETE FROM mn.transactions;
+  DELETE FROM mn.descriptions;
+  DELETE FROM mn.categories;
+  DELETE FROM mn.accounts;
+  DELETE FROM mn.currencies;
+END;
+$$;
+
+
+ALTER FUNCTION mn.fn_clear() OWNER TO lt_admin;
+
+--
+-- Name: t_accounts_bi(); Type: FUNCTION; Schema: mn; Owner: lt_admin
+--
+
+CREATE FUNCTION t_accounts_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_user_id();
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION mn.t_accounts_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_categories_bi(); Type: FUNCTION; Schema: mn; Owner: lt_admin
+--
+
+CREATE FUNCTION t_categories_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_user_id();
+  NEW.category_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+    'owner_id = ' || NEW.owner_id);
+  NEW.is_deleted = FALSE;  
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION mn.t_categories_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_currencies_bi(); Type: FUNCTION; Schema: mn; Owner: lt_admin
+--
+
+CREATE FUNCTION t_currencies_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_user_id();
+  
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION mn.t_currencies_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_descriptions_bi(); Type: FUNCTION; Schema: mn; Owner: lt_admin
+--
+
+CREATE FUNCTION t_descriptions_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_user_id();
+  NEW.description_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+    'owner_id = ' || NEW.owner_id);
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION mn.t_descriptions_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_operations_bi(); Type: FUNCTION; Schema: mn; Owner: lt_admin
+--
+
+CREATE FUNCTION t_operations_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_user_id();
+  NEW.lno = df.fn_get_next_field_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 'lno', 
+    'owner_id = ' || NEW.owner_id);
+  
+  NEW.is_deleted = FALSE;
+  NEW.date_created = df.fn_utc_timestamp();
+  
+  NEW.sys_operation_id = df.fn_get_next_field_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_operation_id');  
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION mn.t_operations_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_transactions_bi(); Type: FUNCTION; Schema: mn; Owner: lt_admin
+--
+
+CREATE FUNCTION t_transactions_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_user_id();
+  NEW.transaction_id = df.fn_get_next_random_pk_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, '', 1000, 9999);
+  NEW.lno = df.fn_get_next_field_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 'lno', 
+    'owner_id = ' || NEW.owner_id);
+
+  IF NEW.is_real IS NULL THEN
+    NEW.is_real = TRUE;
+  END IF; 
+  
+  NEW.is_deleted = FALSE;
+  NEW.date_created = df.fn_utc_timestamp();
+  
+  NEW.sys_transaction_id = df.fn_get_next_field_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_transaction_id');
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION mn.t_transactions_bi() OWNER TO lt_admin;
+
 SET default_tablespace = '';
 
 SET default_with_oids = false;
