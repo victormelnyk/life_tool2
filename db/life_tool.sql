@@ -365,7 +365,7 @@ CREATE FUNCTION fn_temp_table_exist(atable_name name) RETURNS t_boolean
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  RETURN EXISTS( 
+  RETURN EXISTS(
     SELECT *
     FROM information_schema.tables T
     WHERE T.table_name = atable_name
@@ -662,30 +662,30 @@ DECLARE
   LR_LOGIN_OR_PASSWOR_IS_INCORRECT CONSTANT df.t_tinyint_id := 2;
   LR_ACCOUNT_HAS_BEEN_LOCKED CONSTANT df.t_tinyint_id := 3;
   LR_ACCOUNT_IS_DISABLED CONSTANT df.t_tinyint_id := 4;
-  
+
   ACCOUNT_LOCK_TIMEOUT CONSTANT TIME := TIME '00:15';
   MAX_BAD_LOGON_ATTEMPTS CONSTANT df.t_tinyint := 3;
-  
+
   lnow df.t_timestamp := df.fn_utc_timestamp();
-  luser record; 
+  luser record;
 BEGIN
   DROP TABLE IF EXISTS tmp_logged_users;
-  
+
   SELECT U.user_id, U.password, U.is_active, U.is_deleted, U.date_lock
-  INTO luser 
+  INTO luser
   FROM us.users U
   WHERE U.login = alogin;
-  
+
   ruser_id := luser.user_id;
   IF (ruser_id IS NULL) THEN
     rlogon_result = LR_LOGIN_OR_PASSWOR_IS_INCORRECT;
     RETURN;
   END IF;
-  
+
   IF (luser.date_lock IS NOT NULL) THEN
     IF ((lnow - luser.date_lock) < ACCOUNT_LOCK_TIMEOUT) THEN
       UPDATE us.users
-      SET 
+      SET
         bad_logon_attempts = bad_logon_attempts + 1,
         date_last_bad_logon_attempt = lnow
       WHERE user_id = ruser_id;
@@ -693,13 +693,13 @@ BEGIN
       RETURN;
     ELSE
       UPDATE us.users
-      SET 
+      SET
         bad_logon_attempts = 0,
         date_lock = NULL
       WHERE user_id = ruser_id;
     end if;
-  end if;  
-  
+  end if;
+
   IF (luser.password <> apassword) THEN
     rlogon_result := LR_LOGIN_OR_PASSWOR_IS_INCORRECT;
   ELSEIF (NOT luser.is_active OR luser.is_deleted) THEN
@@ -707,19 +707,19 @@ BEGIN
   ELSE
     rlogon_result := LR_OK;
   END IF;
-  
+
   IF (rlogon_result = LR_OK) THEN
     PERFORM us.fn_set_logged_user_id(ruser_id);
   ELSE
     UPDATE us.users
-    SET 
+    SET
       bad_logon_attempts = bad_logon_attempts + 1,
       date_last_bad_logon_attempt = lnow,
-      date_lock = CASE WHEN (bad_logon_attempts + 1 >= MAX_BAD_LOGON_ATTEMPTS) 
-        AND (rlogon_result = LR_LOGIN_OR_PASSWOR_IS_INCORRECT) 
+      date_lock = CASE WHEN (bad_logon_attempts + 1 >= MAX_BAD_LOGON_ATTEMPTS)
+        AND (rlogon_result = LR_LOGIN_OR_PASSWOR_IS_INCORRECT)
         THEN lnow ELSE NULL END
     WHERE user_id = ruser_id;
-  END IF;    
+  END IF;
 END;
 $$;
 
@@ -744,7 +744,7 @@ BEGIN
   WHERE U.user_id = auser_id;
 
   IF (lowner_id IS NULL) THEN
-    RAISE EXCEPTION 'User not exist'; 
+    RAISE EXCEPTION 'User not exist';
   ELSE
     CREATE TEMPORARY TABLE tmp_logged_owners (owner_id df.t_id NOT NULL);
     INSERT INTO tmp_logged_owners (owner_id) VALUES (lowner_id);
@@ -773,16 +773,16 @@ BEGIN
   WHERE U.user_id = auser_id;
 
   IF (luser_id IS NULL) THEN
-    RAISE EXCEPTION 'User not exist'; 
+    RAISE EXCEPTION 'User not exist';
   ELSE
     CREATE TEMPORARY TABLE tmp_logged_users (user_id df.t_id NOT NULL);
     INSERT INTO tmp_logged_users (user_id) VALUES (auser_id);
-    
+
     UPDATE us.users
-    SET 
+    SET
       date_last_logon = df.fn_utc_timestamp(),
-      bad_logon_attempts = 0 
-    WHERE user_id = auser_id;    
+      bad_logon_attempts = 0
+    WHERE user_id = auser_id;
   END IF;
 END;
 $$;
@@ -815,9 +815,9 @@ ALTER FUNCTION us.fn_timestamp_to_local_str(avalue df.t_timestamp) OWNER TO lt_a
 CREATE FUNCTION fn_timestamp_to_utc_timestamp(avalue df.t_timestamp) RETURNS df.t_timestamp
     LANGUAGE plpgsql
     AS $$
-BEGIN  
+BEGIN
   RETURN (
-    SELECT df.fn_timestamp_to_utc_timestamp(avalue, U.time_zone) 
+    SELECT df.fn_timestamp_to_utc_timestamp(avalue, U.time_zone)
     FROM us.users U
     WHERE U.user_id = us.fn_get_logged_user_id());
 END;
