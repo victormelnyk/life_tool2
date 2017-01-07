@@ -357,6 +357,25 @@ $$;
 ALTER FUNCTION df.fn_random_id_range(afrom t_id, ato t_id) OWNER TO lt_admin;
 
 --
+-- Name: fn_temp_table_exist(name); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_temp_table_exist(atable_name name) RETURNS t_boolean
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN EXISTS( 
+    SELECT *
+    FROM information_schema.tables T
+    WHERE T.table_name = atable_name
+      AND T.table_type = 'LOCAL TEMPORARY');
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_temp_table_exist(atable_name name) OWNER TO lt_admin;
+
+--
 -- Name: fn_timestamp_to_local_str(t_timestamp, t_string_short); Type: FUNCTION; Schema: df; Owner: lt_admin
 --
 
@@ -490,7 +509,7 @@ CREATE FUNCTION t_currencies_bi() RETURNS trigger
     AS $$
 BEGIN
   NEW.owner_id = us.fn_get_logged_user_id();
-  
+
   RETURN NEW;
 END;
 $$;
@@ -572,6 +591,64 @@ $$;
 
 
 ALTER FUNCTION mn.t_transactions_bi() OWNER TO lt_admin;
+
+SET search_path = us, pg_catalog;
+
+--
+-- Name: fn_get_logged_owner_id(); Type: FUNCTION; Schema: us; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_get_logged_owner_id() RETURNS df.t_id
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  lowner_id df.t_id;
+BEGIN
+  IF df.fn_temp_table_exist('tmp_us_logged_owners') THEN
+    SELECT LO.owner_id
+    INTO lowner_id
+    FROM tmp_us_logged_owners LO;
+  END IF;
+
+  IF (lowner_id IS NULL) THEN
+    RAISE EXCEPTION 'Owner not set';
+  END IF;
+
+  RETURN lowner_id;
+END;
+$$;
+
+
+ALTER FUNCTION us.fn_get_logged_owner_id() OWNER TO lt_admin;
+
+--
+-- Name: fn_get_logged_user_id(); Type: FUNCTION; Schema: us; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_get_logged_user_id() RETURNS df.t_id
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  luser_id df.t_id;
+BEGIN
+  IF df.fn_temp_table_exist('tmp_us_logged_users') THEN
+    SELECT LU.user_id
+    INTO luser_id
+    FROM tmp_us_logged_users LU;
+  END IF;
+
+  IF (luser_id IS NULL) THEN
+    RAISE EXCEPTION 'Nobody Logged';
+  END IF;
+
+  RETURN luser_id;
+END;
+$$;
+
+
+ALTER FUNCTION us.fn_get_logged_user_id() OWNER TO lt_admin;
+
+SET search_path = mn, pg_catalog;
 
 SET default_tablespace = '';
 
