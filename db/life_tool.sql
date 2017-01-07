@@ -195,6 +195,72 @@ $$;
 ALTER FUNCTION df.fn_random_id_range(afrom t_id, ato t_id) OWNER TO lt_admin;
 
 --
+-- Name: fn_timestamp_to_local_str(t_timestamp, t_string_short); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_timestamp_to_local_str(avalue t_timestamp, atimezome t_string_short DEFAULT 'Europe/Kiev'::character varying) RETURNS t_string_short
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN (
+    SELECT df.fn_timestamp_to_str(avalue + TZN.utc_offset)
+    FROM pg_timezone_names TZN
+    WHERE TZN.name = atimezome);
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_timestamp_to_local_str(avalue t_timestamp, atimezome t_string_short) OWNER TO lt_admin;
+
+--
+-- Name: fn_timestamp_to_str(t_timestamp); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_timestamp_to_str(avalue t_timestamp) RETURNS t_string_short
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN to_char(avalue, 'yyyy-MM-dd HH24:MI:SS');
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_timestamp_to_str(avalue t_timestamp) OWNER TO lt_admin;
+
+--
+-- Name: fn_timestamp_to_utc_timestamp(t_timestamp, t_string_short); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_timestamp_to_utc_timestamp(avalue t_timestamp, atimezome t_string_short DEFAULT 'Europe/Kiev'::character varying) RETURNS t_timestamp
+    LANGUAGE plpgsql
+    AS $$
+BEGIN  
+  RETURN (
+    SELECT avalue - TZN.utc_offset 
+    FROM pg_timezone_names TZN
+    WHERE TZN.name = atimezome);
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_timestamp_to_utc_timestamp(avalue t_timestamp, atimezome t_string_short) OWNER TO lt_admin;
+
+--
+-- Name: fn_utc_timestamp(); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_utc_timestamp() RETURNS t_timestamp
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN clock_timestamp() AT TIME ZONE 'UTC';
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_utc_timestamp() OWNER TO lt_admin;
+
+--
 -- PostgreSQL database dump complete
 --
 
