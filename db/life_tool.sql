@@ -356,9 +356,9 @@ ALTER FUNCTION df.fn_timestamp_to_str(avalue t_timestamp) OWNER TO lt_admin;
 CREATE FUNCTION fn_timestamp_to_utc_timestamp(avalue t_timestamp, atimezome t_string_short DEFAULT 'Europe/Kiev'::character varying) RETURNS t_timestamp
     LANGUAGE plpgsql
     AS $$
-BEGIN  
+BEGIN
   RETURN (
-    SELECT avalue - TZN.utc_offset 
+    SELECT avalue - TZN.utc_offset
     FROM pg_timezone_names TZN
     WHERE TZN.name = atimezome);
 END;
