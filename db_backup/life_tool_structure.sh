@@ -3,7 +3,6 @@
   --host=localhost \
   --port=2040 \
   --username=lt_admin \
-  --password \
   --dbname=life_tool \
   --format=p \
   --encoding=UTF8 \

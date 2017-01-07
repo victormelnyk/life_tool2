@@ -43,7 +43,7 @@ SET search_path = df, pg_catalog;
 -- Name: t_boolean; Type: DOMAIN; Schema: df; Owner: lt_admin
 --
 
-CREATE DOMAIN t_boolean AS boolean NOT NULL;
+CREATE DOMAIN t_boolean AS boolean;
 
 
 ALTER DOMAIN t_boolean OWNER TO lt_admin;
@@ -52,7 +52,7 @@ ALTER DOMAIN t_boolean OWNER TO lt_admin;
 -- Name: t_id; Type: DOMAIN; Schema: df; Owner: lt_admin
 --
 
-CREATE DOMAIN t_id AS integer NOT NULL;
+CREATE DOMAIN t_id AS integer;
 
 
 ALTER DOMAIN t_id OWNER TO lt_admin;
@@ -97,7 +97,7 @@ ALTER DOMAIN t_smallint OWNER TO lt_admin;
 -- Name: t_string_large; Type: DOMAIN; Schema: df; Owner: lt_admin
 --
 
-CREATE DOMAIN t_string_large AS character varying(255) NOT NULL;
+CREATE DOMAIN t_string_large AS character varying(255);
 
 
 ALTER DOMAIN t_string_large OWNER TO lt_admin;
@@ -106,7 +106,7 @@ ALTER DOMAIN t_string_large OWNER TO lt_admin;
 -- Name: t_string_short; Type: DOMAIN; Schema: df; Owner: lt_admin
 --
 
-CREATE DOMAIN t_string_short AS character varying(50) NOT NULL;
+CREATE DOMAIN t_string_short AS character varying(50);
 
 
 ALTER DOMAIN t_string_short OWNER TO lt_admin;
@@ -148,6 +148,128 @@ CREATE DOMAIN t_tinyint_id AS smallint NOT NULL
 
 
 ALTER DOMAIN t_tinyint_id OWNER TO lt_admin;
+
+--
+-- Name: fn_get_next_field_value(name, name, name, t_string_large); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_get_next_field_value(atable_schema name, atable_name name, afield_name name, acondition t_string_large DEFAULT ''::character varying) RETURNS t_id
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  lresult df.t_id;
+  lsql df.t_string_large;
+BEGIN
+  lsql = 'SELECT COALESCE(MAX(' || afield_name || ') + 1, 1) FROM ' ||
+    atable_schema || '.' || atable_name;
+
+  IF acondition <> '' THEN
+    lsql = lsql || ' WHERE ' || acondition;
+  END IF;
+
+  EXECUTE lsql
+  INTO lresult;
+
+  RETURN lresult;
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_get_next_field_value(atable_schema name, atable_name name, afield_name name, acondition t_string_large) OWNER TO lt_admin;
+
+--
+-- Name: fn_get_next_pk_value(name, name, t_string_large); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_get_next_pk_value(atable_schema name, atable_name name, acondition t_string_large DEFAULT ''::character varying) RETURNS t_id
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN df.fn_get_next_field_value(atable_schema, atable_name, 
+    df.fn_get_pk_field_name(atable_schema, atable_name), acondition);
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_get_next_pk_value(atable_schema name, atable_name name, acondition t_string_large) OWNER TO lt_admin;
+
+--
+-- Name: fn_get_next_random_pk_value(name, name, t_string_short, t_id, t_id); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_get_next_random_pk_value(atable_schema name, atable_name name, acondition t_string_short DEFAULT ''::character varying, afrom t_id DEFAULT 0, ato t_id DEFAULT 0) RETURNS t_id
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  lis_exist df.t_boolean;
+  lresult df.t_id;
+  lsql df.t_string_large;
+  lfield_name df.t_string_short;
+BEGIN
+  lfield_name = df.fn_get_pk_field_name(atable_schema, atable_name);
+
+  LOOP
+    IF (afrom <> 0) AND (ato <> 0) THEN
+      lresult = df.fn_random_id_range(afrom, ato);
+    ELSE
+      lresult = df.fn_random_id();  
+    END IF;
+    
+    lsql = 'SELECT EXISTS(SELECT * FROM ' || 
+      atable_schema || '.' || atable_name || ' WHERE ';
+      
+    IF acondition <> '' THEN 
+      lsql = lsql || acondition || ' AND ';
+    END IF;  
+    
+    lsql = lsql || lfield_name || ' = ' || lresult || ')';
+    
+    EXECUTE lsql
+    INTO lis_exist;
+        
+    IF NOT lis_exist THEN
+      EXIT;
+    END IF;
+  END LOOP;
+
+  RETURN lresult;
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_get_next_random_pk_value(atable_schema name, atable_name name, acondition t_string_short, afrom t_id, ato t_id) OWNER TO lt_admin;
+
+--
+-- Name: fn_get_pk_field_name(name, name); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_get_pk_field_name(atable_schema name, atable_name name) RETURNS t_string_short
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  lresult df.t_string_short;
+BEGIN
+  SELECT KCU.column_name
+  INTO lresult
+  FROM information_schema.table_constraints TC
+    INNER JOIN information_schema.key_column_usage KCU
+      ON  KCU.table_catalog   = TC.table_catalog
+      AND KCU.table_schema    = TC.table_schema
+      AND KCU.table_name      = TC.table_name
+      AND KCU.constraint_name = TC.constraint_name
+  WHERE TC.table_catalog   = current_catalog
+    AND TC.table_schema    = atable_schema
+    AND TC.table_name      = atable_name
+    AND TC.constraint_type = 'PRIMARY KEY'
+  ORDER BY KCU.ordinal_position DESC
+  LIMIT 1;
+
+  RETURN lresult;
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_get_pk_field_name(atable_schema name, atable_name name) OWNER TO lt_admin;
 
 --
 -- Name: fn_random_i(); Type: FUNCTION; Schema: df; Owner: lt_admin
