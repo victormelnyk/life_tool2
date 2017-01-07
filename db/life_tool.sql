@@ -70,7 +70,8 @@ ALTER DOMAIN t_boolean OWNER TO lt_admin;
 -- Name: t_id; Type: DOMAIN; Schema: df; Owner: lt_admin
 --
 
-CREATE DOMAIN t_id AS integer;
+CREATE DOMAIN t_id AS integer
+	CONSTRAINT chk_t_id CHECK ((VALUE > 0));
 
 
 ALTER DOMAIN t_id OWNER TO lt_admin;
@@ -604,10 +605,10 @@ CREATE FUNCTION fn_get_logged_owner_id() RETURNS df.t_id
 DECLARE
   lowner_id df.t_id;
 BEGIN
-  IF df.fn_temp_table_exist('tmp_us_logged_owners') THEN
+  IF df.fn_temp_table_exist('tmp_logged_owners') THEN
     SELECT LO.owner_id
     INTO lowner_id
-    FROM tmp_us_logged_owners LO;
+    FROM tmp_logged_owners LO;
   END IF;
 
   IF (lowner_id IS NULL) THEN
@@ -631,10 +632,10 @@ CREATE FUNCTION fn_get_logged_user_id() RETURNS df.t_id
 DECLARE
   luser_id df.t_id;
 BEGIN
-  IF df.fn_temp_table_exist('tmp_us_logged_users') THEN
+  IF df.fn_temp_table_exist('tmp_logged_users') THEN
     SELECT LU.user_id
     INTO luser_id
-    FROM tmp_us_logged_users LU;
+    FROM tmp_logged_users LU;
   END IF;
 
   IF (luser_id IS NULL) THEN
@@ -647,6 +648,70 @@ $$;
 
 
 ALTER FUNCTION us.fn_get_logged_user_id() OWNER TO lt_admin;
+
+--
+-- Name: fn_set_logged_owner_id(df.t_id); Type: FUNCTION; Schema: us; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_set_logged_owner_id(auser_id df.t_id) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  lowner_id df.t_id;
+BEGIN
+  DROP TABLE IF EXISTS tmp_logged_owners;
+
+  SELECT U.user_id
+  INTO lowner_id
+  FROM us.users U
+  WHERE U.user_id = auser_id;
+
+  IF (lowner_id IS NULL) THEN
+    RAISE EXCEPTION 'User not exist'; 
+  ELSE
+    CREATE TEMPORARY TABLE tmp_logged_owners (owner_id df.t_id NOT NULL);
+    INSERT INTO tmp_logged_owners (owner_id) VALUES (lowner_id);
+  END IF;
+END;
+$$;
+
+
+ALTER FUNCTION us.fn_set_logged_owner_id(auser_id df.t_id) OWNER TO lt_admin;
+
+--
+-- Name: fn_set_logged_user_id(df.t_id); Type: FUNCTION; Schema: us; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_set_logged_user_id(auser_id df.t_id) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  luser_id df.t_id;
+BEGIN
+  DROP TABLE IF EXISTS tmp_logged_users;
+
+  SELECT U.user_id
+  INTO luser_id
+  FROM us.users U
+  WHERE U.user_id = auser_id;
+
+  IF (luser_id IS NULL) THEN
+    RAISE EXCEPTION 'User not exist'; 
+  ELSE
+    CREATE TEMPORARY TABLE tmp_logged_users (user_id df.t_id NOT NULL);
+    INSERT INTO tmp_logged_users (user_id) VALUES (auser_id);
+    
+    UPDATE us.users
+    SET 
+      date_last_logon = df.fn_utc_timestamp(),
+      bad_logon_attempts = 0 
+    WHERE user_id = auser_id;    
+  END IF;
+END;
+$$;
+
+
+ALTER FUNCTION us.fn_set_logged_user_id(auser_id df.t_id) OWNER TO lt_admin;
 
 SET search_path = mn, pg_catalog;
 
@@ -763,6 +828,21 @@ ALTER TABLE transactions OWNER TO lt_admin;
 SET search_path = us, pg_catalog;
 
 --
+-- Name: computers; Type: TABLE; Schema: us; Owner: lt_admin
+--
+
+CREATE TABLE computers (
+    user_id df.t_id NOT NULL,
+    computer_id df.t_id NOT NULL,
+    name df.t_string_large NOT NULL,
+    short_name df.t_string_short,
+    date_created df.t_timestamp NOT NULL
+);
+
+
+ALTER TABLE computers OWNER TO lt_admin;
+
+--
 -- Name: users; Type: TABLE; Schema: us; Owner: lt_admin
 --
 
@@ -775,11 +855,11 @@ CREATE TABLE users (
     is_deleted df.t_boolean NOT NULL,
     date_created df.t_timestamp NOT NULL,
     date_lock df.t_timestamp,
-    date_last_bad_logon_attempt df.t_id,
     date_last_logon df.t_timestamp,
     bad_logon_attempts df.t_integer NOT NULL,
     is_active df.t_boolean NOT NULL,
-    time_zone df.t_string_short
+    time_zone df.t_string_short,
+    date_last_bad_logon_attempt df.t_timestamp
 );
 
 
@@ -884,6 +964,14 @@ ALTER TABLE ONLY operations
 
 
 SET search_path = us, pg_catalog;
+
+--
+-- Name: computers pk_computers; Type: CONSTRAINT; Schema: us; Owner: lt_admin
+--
+
+ALTER TABLE ONLY computers
+    ADD CONSTRAINT pk_computers PRIMARY KEY (user_id, computer_id);
+
 
 --
 -- Name: users pk_users; Type: CONSTRAINT; Schema: us; Owner: lt_admin
@@ -1047,6 +1135,16 @@ ALTER TABLE ONLY transactions
 
 ALTER TABLE ONLY transactions
     ADD CONSTRAINT fk_transactions__users FOREIGN KEY (owner_id) REFERENCES us.users(user_id);
+
+
+SET search_path = us, pg_catalog;
+
+--
+-- Name: computers fk_computers__users; Type: FK CONSTRAINT; Schema: us; Owner: lt_admin
+--
+
+ALTER TABLE ONLY computers
+    ADD CONSTRAINT fk_computers__users FOREIGN KEY (user_id) REFERENCES users(user_id);
 
 
 --
