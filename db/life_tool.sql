@@ -701,11 +701,11 @@ BEGIN
   NEW.created_by = us.fn_get_logged_user_id();
 
   NEW.is_deleted = FALSE;
-  NEW.date_created = df.fn_utc_timestamp();  
-  
+  NEW.date_created = df.fn_utc_timestamp();
+
   NEW.sys_message_id = df.fn_get_next_field_value(
-    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_message_id');  
-  
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_message_id');
+
   RETURN NEW;
 END;
 $$;
