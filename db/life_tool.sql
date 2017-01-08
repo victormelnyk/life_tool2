@@ -33,6 +33,15 @@ CREATE SCHEMA mn;
 ALTER SCHEMA mn OWNER TO lt_admin;
 
 --
+-- Name: pm; Type: SCHEMA; Schema: -; Owner: lt_admin
+--
+
+CREATE SCHEMA pm;
+
+
+ALTER SCHEMA pm OWNER TO lt_admin;
+
+--
 -- Name: us; Type: SCHEMA; Schema: -; Owner: lt_admin
 --
 
@@ -358,6 +367,38 @@ $$;
 ALTER FUNCTION df.fn_random_id_range(afrom t_id, ato t_id) OWNER TO lt_admin;
 
 --
+-- Name: fn_root_path_calc(t_id, t_id, name, name, t_string_short, t_string_short); Type: FUNCTION; Schema: df; Owner: lt_admin
+--
+
+CREATE FUNCTION fn_root_path_calc(aid t_id, aparent_id t_id, atable_schema name, atable_name name, aid_field_name t_string_short, aparent_id_field_name t_string_short) RETURNS t_string_short
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  lid df.t_id;
+  lparent_id df.t_id;
+  lresult df.t_string_short;
+BEGIN
+  lid = aid;
+  lparent_id = aparent_id;
+  lresult = '.' || lid || '.';
+
+  WHILE (lparent_id IS NOT NULL) LOOP
+    EXECUTE 'SELECT ' || aid_field_name || ', ' || aparent_id_field_name || ' '
+      'FROM ' || atable_schema || '.' || atable_name || ' '
+      'WHERE ' || aid_field_name || ' = ' || lparent_id
+    INTO lid, lparent_id;
+
+    lresult =  '.' || lid || lresult;
+  END LOOP;
+
+  RETURN lresult;
+END;
+$$;
+
+
+ALTER FUNCTION df.fn_root_path_calc(aid t_id, aparent_id t_id, atable_schema name, atable_name name, aid_field_name t_string_short, aparent_id_field_name t_string_short) OWNER TO lt_admin;
+
+--
 -- Name: fn_temp_table_exist(name); Type: FUNCTION; Schema: df; Owner: lt_admin
 --
 
@@ -592,6 +633,175 @@ $$;
 
 
 ALTER FUNCTION mn.t_transactions_bi() OWNER TO lt_admin;
+
+SET search_path = pm, pg_catalog;
+
+--
+-- Name: t_activities_bi(); Type: FUNCTION; Schema: pm; Owner: lt_admin
+--
+
+CREATE FUNCTION t_activities_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_owner_id();
+  NEW.activity_id = df.fn_get_next_random_pk_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, '', 1000, 9999);--!!owner_condition
+  NEW.created_by = us.fn_get_logged_user_id();
+
+  NEW.date_from = us.fn_timestamp_to_utc_timestamp(NEW.date_from);
+  NEW.date_to = us.fn_timestamp_to_utc_timestamp(NEW.date_to);
+
+  NEW.is_deleted = FALSE;
+  NEW.date_created = df.fn_utc_timestamp();
+
+  NEW.sys_activity_id = df.fn_get_next_field_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_activity_id');
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION pm.t_activities_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_activities_bu(); Type: FUNCTION; Schema: pm; Owner: lt_admin
+--
+
+CREATE FUNCTION t_activities_bu() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (NEW.date_from <> OLD.date_from) THEN
+    NEW.date_from = us.fn_timestamp_to_utc_timestamp(NEW.date_from);
+  END IF;
+  IF (NEW.date_to <> OLD.date_to) THEN
+    NEW.date_to = us.fn_timestamp_to_utc_timestamp(NEW.date_to);
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION pm.t_activities_bu() OWNER TO lt_admin;
+
+--
+-- Name: t_task_messages_bi(); Type: FUNCTION; Schema: pm; Owner: lt_admin
+--
+
+CREATE FUNCTION t_task_messages_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_owner_id();
+  NEW.message_id = df.fn_get_next_random_pk_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, '', 1000, 9999);--!!owner_condition
+  NEW.created_by = us.fn_get_logged_user_id();
+
+  NEW.is_deleted = FALSE;
+  NEW.date_created = df.fn_utc_timestamp();  
+  
+  NEW.sys_message_id = df.fn_get_next_field_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_message_id');  
+  
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION pm.t_task_messages_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_task_users_bi(); Type: FUNCTION; Schema: pm; Owner: lt_admin
+--
+
+CREATE FUNCTION t_task_users_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.date_created = df.fn_utc_timestamp();
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION pm.t_task_users_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_tasks_au(); Type: FUNCTION; Schema: pm; Owner: lt_admin
+--
+
+CREATE FUNCTION t_tasks_au() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  UPDATE pm.tasks
+  SET root_path = NEW.root_path
+  WHERE owner_id       = NEW.owner_id
+    AND parent_task_id = NEW.task_id;
+
+  RETURN OLD;
+END;
+$$;
+
+
+ALTER FUNCTION pm.t_tasks_au() OWNER TO lt_admin;
+
+--
+-- Name: t_tasks_bi(); Type: FUNCTION; Schema: pm; Owner: lt_admin
+--
+
+CREATE FUNCTION t_tasks_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_owner_id();
+  NEW.task_id = df.fn_get_next_random_pk_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, '', 1000, 9999);--!!owner_condition
+  NEW.created_by = us.fn_get_logged_user_id();
+
+  IF (NEW.processed_state_id IS NULL) THEN
+    NEW.processed_state_id = 1/*New*/;
+  END IF;
+
+  IF (NEW.is_deleted IS NULL) THEN
+    NEW.is_deleted = FALSE;
+  END IF;
+
+  NEW.date_created = df.fn_utc_timestamp();
+  NEW.root_path = df.fn_root_path_calc(NEW.task_id, NEW.parent_task_id,
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'task_id', 'parent_task_id');--!!owner_condition
+
+  NEW.sys_task_id = df.fn_get_next_field_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_task_id');
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION pm.t_tasks_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_tasks_bu(); Type: FUNCTION; Schema: pm; Owner: lt_admin
+--
+
+CREATE FUNCTION t_tasks_bu() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.root_path = df.fn_root_path_calc(NEW.task_id, NEW.parent_task_id,
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'task_id', 'parent_task_id');--!!owner_condition
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION pm.t_tasks_bu() OWNER TO lt_admin;
 
 SET search_path = us, pg_catalog;
 
@@ -979,6 +1189,94 @@ CREATE TABLE transactions (
 
 ALTER TABLE transactions OWNER TO lt_admin;
 
+SET search_path = pm, pg_catalog;
+
+--
+-- Name: activities; Type: TABLE; Schema: pm; Owner: lt_admin
+--
+
+CREATE TABLE activities (
+    owner_id df.t_id NOT NULL,
+    activity_id df.t_id NOT NULL,
+    task_id df.t_id NOT NULL,
+    created_by df.t_id NOT NULL,
+    date_from df.t_timestamp NOT NULL,
+    date_to df.t_timestamp NOT NULL,
+    real_time df.t_interval NOT NULL,
+    message df.t_text NOT NULL,
+    is_deleted df.t_boolean NOT NULL,
+    date_created df.t_timestamp NOT NULL,
+    sys_activity_id df.t_id NOT NULL
+);
+
+
+ALTER TABLE activities OWNER TO lt_admin;
+
+--
+-- Name: processed_states; Type: TABLE; Schema: pm; Owner: lt_admin
+--
+
+CREATE TABLE processed_states (
+    processed_state_id df.t_tinyint_id NOT NULL,
+    name df.t_string_short NOT NULL
+);
+
+
+ALTER TABLE processed_states OWNER TO lt_admin;
+
+--
+-- Name: task_messages; Type: TABLE; Schema: pm; Owner: lt_admin
+--
+
+CREATE TABLE task_messages (
+    owner_id df.t_id NOT NULL,
+    message_id df.t_id NOT NULL,
+    task_id df.t_id NOT NULL,
+    created_by df.t_id NOT NULL,
+    message df.t_text NOT NULL,
+    is_deleted df.t_boolean NOT NULL,
+    date_created df.t_timestamp NOT NULL,
+    sys_message_id df.t_id NOT NULL
+);
+
+
+ALTER TABLE task_messages OWNER TO lt_admin;
+
+--
+-- Name: task_users; Type: TABLE; Schema: pm; Owner: lt_admin
+--
+
+CREATE TABLE task_users (
+    owner_id df.t_id NOT NULL,
+    task_id df.t_id NOT NULL,
+    user_id df.t_id NOT NULL,
+    date_created df.t_timestamp NOT NULL
+);
+
+
+ALTER TABLE task_users OWNER TO lt_admin;
+
+--
+-- Name: tasks; Type: TABLE; Schema: pm; Owner: lt_admin
+--
+
+CREATE TABLE tasks (
+    owner_id df.t_id NOT NULL,
+    task_id df.t_id NOT NULL,
+    parent_task_id df.t_id,
+    created_by df.t_id NOT NULL,
+    title df.t_string_large NOT NULL,
+    description df.t_text,
+    processed_state_id df.t_tinyint_id NOT NULL,
+    is_deleted df.t_boolean NOT NULL,
+    date_created df.t_timestamp NOT NULL,
+    sys_task_id df.t_id NOT NULL,
+    root_path df.t_string_short NOT NULL
+);
+
+
+ALTER TABLE tasks OWNER TO lt_admin;
+
 SET search_path = us, pg_catalog;
 
 --
@@ -1137,6 +1435,48 @@ ALTER TABLE ONLY operations
     ADD CONSTRAINT uq_operations__acount_id UNIQUE (owner_id, transaction_id, account_id);
 
 
+SET search_path = pm, pg_catalog;
+
+--
+-- Name: activities pk_activities; Type: CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY activities
+    ADD CONSTRAINT pk_activities PRIMARY KEY (owner_id, activity_id);
+
+
+--
+-- Name: processed_states pk_processed_states; Type: CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY processed_states
+    ADD CONSTRAINT pk_processed_states PRIMARY KEY (processed_state_id);
+
+
+--
+-- Name: task_messages pk_task_messages; Type: CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY task_messages
+    ADD CONSTRAINT pk_task_messages PRIMARY KEY (owner_id, message_id);
+
+
+--
+-- Name: task_users pk_task_users; Type: CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY task_users
+    ADD CONSTRAINT pk_task_users PRIMARY KEY (owner_id, task_id, user_id);
+
+
+--
+-- Name: tasks pk_tasks; Type: CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY tasks
+    ADD CONSTRAINT pk_tasks PRIMARY KEY (owner_id, task_id);
+
+
 SET search_path = us, pg_catalog;
 
 --
@@ -1205,6 +1545,57 @@ CREATE TRIGGER t_operations_bi BEFORE INSERT ON operations FOR EACH ROW EXECUTE 
 --
 
 CREATE TRIGGER t_transactions_bi BEFORE INSERT ON transactions FOR EACH ROW EXECUTE PROCEDURE t_transactions_bi();
+
+
+SET search_path = pm, pg_catalog;
+
+--
+-- Name: activities t_activities_bi; Type: TRIGGER; Schema: pm; Owner: lt_admin
+--
+
+CREATE TRIGGER t_activities_bi BEFORE INSERT ON activities FOR EACH ROW EXECUTE PROCEDURE t_activities_bi();
+
+
+--
+-- Name: activities t_activities_bu; Type: TRIGGER; Schema: pm; Owner: lt_admin
+--
+
+CREATE TRIGGER t_activities_bu BEFORE UPDATE ON activities FOR EACH ROW EXECUTE PROCEDURE t_activities_bu();
+
+
+--
+-- Name: task_messages t_task_messages_bi; Type: TRIGGER; Schema: pm; Owner: lt_admin
+--
+
+CREATE TRIGGER t_task_messages_bi BEFORE INSERT ON task_messages FOR EACH ROW EXECUTE PROCEDURE t_task_messages_bi();
+
+
+--
+-- Name: task_users t_task_users_bi; Type: TRIGGER; Schema: pm; Owner: lt_admin
+--
+
+CREATE TRIGGER t_task_users_bi BEFORE INSERT ON task_users FOR EACH ROW EXECUTE PROCEDURE t_task_users_bi();
+
+
+--
+-- Name: tasks t_tasks_au; Type: TRIGGER; Schema: pm; Owner: lt_admin
+--
+
+CREATE TRIGGER t_tasks_au AFTER INSERT OR UPDATE ON tasks FOR EACH ROW EXECUTE PROCEDURE t_tasks_au();
+
+
+--
+-- Name: tasks t_tasks_bi; Type: TRIGGER; Schema: pm; Owner: lt_admin
+--
+
+CREATE TRIGGER t_tasks_bi BEFORE INSERT ON tasks FOR EACH ROW EXECUTE PROCEDURE t_tasks_bi();
+
+
+--
+-- Name: tasks t_tasks_bu; Type: TRIGGER; Schema: pm; Owner: lt_admin
+--
+
+CREATE TRIGGER t_tasks_bu BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE PROCEDURE t_tasks_bu();
 
 
 SET search_path = us, pg_catalog;
@@ -1327,6 +1718,88 @@ ALTER TABLE ONLY transactions
 
 ALTER TABLE ONLY transactions
     ADD CONSTRAINT fk_transactions__users FOREIGN KEY (owner_id) REFERENCES us.users(user_id);
+
+
+SET search_path = pm, pg_catalog;
+
+--
+-- Name: activities fk_activities__tasks; Type: FK CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY activities
+    ADD CONSTRAINT fk_activities__tasks FOREIGN KEY (owner_id, task_id) REFERENCES tasks(owner_id, task_id);
+
+
+--
+-- Name: activities fk_activities__us_users; Type: FK CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY activities
+    ADD CONSTRAINT fk_activities__us_users FOREIGN KEY (created_by) REFERENCES us.users(user_id);
+
+
+--
+-- Name: task_messages fk_task_messages__tasks; Type: FK CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY task_messages
+    ADD CONSTRAINT fk_task_messages__tasks FOREIGN KEY (owner_id, task_id) REFERENCES tasks(owner_id, task_id);
+
+
+--
+-- Name: task_messages fk_task_messages__users; Type: FK CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY task_messages
+    ADD CONSTRAINT fk_task_messages__users FOREIGN KEY (created_by) REFERENCES us.users(user_id);
+
+
+--
+-- Name: task_users fk_task_users__tasks; Type: FK CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY task_users
+    ADD CONSTRAINT fk_task_users__tasks FOREIGN KEY (owner_id, task_id) REFERENCES tasks(owner_id, task_id);
+
+
+--
+-- Name: task_users fk_task_users__users; Type: FK CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY task_users
+    ADD CONSTRAINT fk_task_users__users FOREIGN KEY (user_id) REFERENCES us.users(user_id);
+
+
+--
+-- Name: tasks fk_tasks__processed_states; Type: FK CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY tasks
+    ADD CONSTRAINT fk_tasks__processed_states FOREIGN KEY (processed_state_id) REFERENCES processed_states(processed_state_id);
+
+
+--
+-- Name: tasks fk_tasks__tasks; Type: FK CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY tasks
+    ADD CONSTRAINT fk_tasks__tasks FOREIGN KEY (owner_id, parent_task_id) REFERENCES tasks(owner_id, task_id);
+
+
+--
+-- Name: tasks fk_tasks__users__created_by; Type: FK CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY tasks
+    ADD CONSTRAINT fk_tasks__users__created_by FOREIGN KEY (created_by) REFERENCES us.users(user_id);
+
+
+--
+-- Name: tasks fk_tasks__users__owner_id; Type: FK CONSTRAINT; Schema: pm; Owner: lt_admin
+--
+
+ALTER TABLE ONLY tasks
+    ADD CONSTRAINT fk_tasks__users__owner_id FOREIGN KEY (owner_id) REFERENCES us.users(user_id);
 
 
 SET search_path = us, pg_catalog;
