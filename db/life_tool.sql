@@ -799,7 +799,7 @@ CREATE FUNCTION fn_timestamp_to_local_str(avalue df.t_timestamp) RETURNS df.t_st
     AS $$
 BEGIN
   RETURN (
-    SELECT df.fn_timestamp_to_local_str(avalue, U.time_zone) 
+    SELECT df.fn_timestamp_to_local_str(avalue, U.time_zone)
     FROM us.users U
     WHERE U.user_id = us.fn_get_logged_user_id());
 END;
@@ -1018,6 +1018,26 @@ CREATE TABLE users (
 
 
 ALTER TABLE users OWNER TO lt_admin;
+
+--
+-- Name: vw_logged_owners; Type: VIEW; Schema: us; Owner: lt_admin
+--
+
+CREATE VIEW vw_logged_owners AS
+ SELECT fn_get_logged_owner_id() AS owner_id;
+
+
+ALTER TABLE vw_logged_owners OWNER TO lt_admin;
+
+--
+-- Name: vw_logged_users; Type: VIEW; Schema: us; Owner: lt_admin
+--
+
+CREATE VIEW vw_logged_users AS
+ SELECT fn_get_logged_user_id() AS user_id;
+
+
+ALTER TABLE vw_logged_users OWNER TO lt_admin;
 
 SET search_path = mn, pg_catalog;
 
