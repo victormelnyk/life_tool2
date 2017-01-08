@@ -1139,7 +1139,7 @@ BEGIN
     NEW.date_to = df.fn_utc_timestamp();
   END IF;
 
-  RETURN NEW;  
+  RETURN NEW;
 END;
 $$;
 
@@ -1157,11 +1157,11 @@ BEGIN
   NEW.owner_id = us.fn_get_logged_owner_id();
   NEW.application_id = df.fn_get_next_random_pk_value(
     TG_TABLE_SCHEMA, TG_TABLE_NAME, 'owner_id = ' || NEW.owner_id, 1000, 9999);
-  
+
   NEW.date_created = df.fn_utc_timestamp();
-  
+
   NEW.sys_application_id = df.fn_get_next_field_value(
-    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_application_id');--!!owner_condition  
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_application_id');--!!owner_condition
 
   RETURN NEW;
 END;
