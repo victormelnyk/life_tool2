@@ -51,6 +51,15 @@ CREATE SCHEMA us;
 ALTER SCHEMA us OWNER TO lt_admin;
 
 --
+-- Name: wa; Type: SCHEMA; Schema: -; Owner: lt_admin
+--
+
+CREATE SCHEMA wa;
+
+
+ALTER SCHEMA wa OWNER TO lt_admin;
+
+--
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
 --
 
@@ -1077,6 +1086,117 @@ $$;
 
 ALTER FUNCTION us.t_users_bi() OWNER TO lt_admin;
 
+SET search_path = wa, pg_catalog;
+
+--
+-- Name: t_activities_bi(); Type: FUNCTION; Schema: wa; Owner: lt_admin
+--
+
+CREATE FUNCTION t_activities_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  lnow df.t_timestamp;
+BEGIN
+  lnow = df.fn_utc_timestamp();
+
+  NEW.owner_id = us.fn_get_logged_owner_id();
+  NEW.user_id = us.fn_get_logged_user_id();
+  NEW.activity_id = df.fn_get_next_pk_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME,
+    'owner_id = ' || NEW.owner_id ||
+      ' AND user_id = ' || NEW.user_id ||
+      ' AND computer_id = ' || NEW.computer_id ||
+      ' AND application_id = ' || NEW.application_id ||
+      ' AND window_id = ' || NEW.window_id
+  );
+
+  IF NEW.date_from IS NULL THEN
+    NEW.date_from = lnow;
+  END IF;
+  IF NEW.date_to IS NULL THEN
+    NEW.date_to = lnow;
+  END IF;
+
+  NEW.date_created = lnow;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION wa.t_activities_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_activities_bu(); Type: FUNCTION; Schema: wa; Owner: lt_admin
+--
+
+CREATE FUNCTION t_activities_bu() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.date_to IS NULL THEN
+    NEW.date_to = df.fn_utc_timestamp();
+  END IF;
+
+  RETURN NEW;  
+END;
+$$;
+
+
+ALTER FUNCTION wa.t_activities_bu() OWNER TO lt_admin;
+
+--
+-- Name: t_applications_bi(); Type: FUNCTION; Schema: wa; Owner: lt_admin
+--
+
+CREATE FUNCTION t_applications_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_owner_id();
+  NEW.application_id = df.fn_get_next_random_pk_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'owner_id = ' || NEW.owner_id, 1000, 9999);
+  
+  NEW.date_created = df.fn_utc_timestamp();
+  
+  NEW.sys_application_id = df.fn_get_next_field_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_application_id');--!!owner_condition  
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION wa.t_applications_bi() OWNER TO lt_admin;
+
+--
+-- Name: t_windows_bi(); Type: FUNCTION; Schema: wa; Owner: lt_admin
+--
+
+CREATE FUNCTION t_windows_bi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.owner_id = us.fn_get_logged_owner_id();
+  NEW.window_id = df.fn_get_next_random_pk_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME,
+    'owner_id = ' || NEW.owner_id ||
+      ' AND application_id = ' ||  NEW.application_id,
+    1000, 9999);
+
+  NEW.date_created = df.fn_utc_timestamp();
+
+  NEW.sys_window_id = df.fn_get_next_field_value(
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, 'sys_window_id');--!!owner_condition
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION wa.t_windows_bi() OWNER TO lt_admin;
+
 SET search_path = mn, pg_catalog;
 
 SET default_tablespace = '';
@@ -1337,6 +1457,58 @@ CREATE VIEW vw_logged_users AS
 
 ALTER TABLE vw_logged_users OWNER TO lt_admin;
 
+SET search_path = wa, pg_catalog;
+
+--
+-- Name: activities; Type: TABLE; Schema: wa; Owner: lt_admin
+--
+
+CREATE TABLE activities (
+    owner_id df.t_id NOT NULL,
+    user_id df.t_id NOT NULL,
+    computer_id df.t_id NOT NULL,
+    application_id df.t_id NOT NULL,
+    window_id df.t_id NOT NULL,
+    activity_id df.t_id NOT NULL,
+    date_from df.t_timestamp NOT NULL,
+    date_to df.t_timestamp NOT NULL,
+    date_created df.t_timestamp NOT NULL
+);
+
+
+ALTER TABLE activities OWNER TO lt_admin;
+
+--
+-- Name: applications; Type: TABLE; Schema: wa; Owner: lt_admin
+--
+
+CREATE TABLE applications (
+    owner_id df.t_id NOT NULL,
+    application_id df.t_id NOT NULL,
+    file_name df.t_string_large NOT NULL,
+    date_created df.t_timestamp NOT NULL,
+    sys_application_id df.t_id NOT NULL
+);
+
+
+ALTER TABLE applications OWNER TO lt_admin;
+
+--
+-- Name: windows; Type: TABLE; Schema: wa; Owner: lt_admin
+--
+
+CREATE TABLE windows (
+    owner_id df.t_id NOT NULL,
+    application_id df.t_id NOT NULL,
+    window_id df.t_id NOT NULL,
+    title df.t_string_large NOT NULL,
+    date_created df.t_timestamp NOT NULL,
+    sys_window_id df.t_id NOT NULL
+);
+
+
+ALTER TABLE windows OWNER TO lt_admin;
+
 SET search_path = mn, pg_catalog;
 
 --
@@ -1503,6 +1675,40 @@ ALTER TABLE ONLY users
     ADD CONSTRAINT uq_users UNIQUE (login);
 
 
+SET search_path = wa, pg_catalog;
+
+--
+-- Name: activities pk_activities; Type: CONSTRAINT; Schema: wa; Owner: lt_admin
+--
+
+ALTER TABLE ONLY activities
+    ADD CONSTRAINT pk_activities PRIMARY KEY (owner_id, user_id, computer_id, application_id, window_id, activity_id);
+
+
+--
+-- Name: applications pk_applications; Type: CONSTRAINT; Schema: wa; Owner: lt_admin
+--
+
+ALTER TABLE ONLY applications
+    ADD CONSTRAINT pk_applications PRIMARY KEY (owner_id, application_id);
+
+
+--
+-- Name: windows pk_windows; Type: CONSTRAINT; Schema: wa; Owner: lt_admin
+--
+
+ALTER TABLE ONLY windows
+    ADD CONSTRAINT pk_windows PRIMARY KEY (owner_id, application_id, window_id);
+
+
+--
+-- Name: activities uq_activities; Type: CONSTRAINT; Schema: wa; Owner: lt_admin
+--
+
+ALTER TABLE ONLY activities
+    ADD CONSTRAINT uq_activities UNIQUE (owner_id, user_id, computer_id, date_from, date_to);
+
+
 SET search_path = mn, pg_catalog;
 
 --
@@ -1612,6 +1818,36 @@ CREATE TRIGGER t_computers_bi BEFORE INSERT ON computers FOR EACH ROW EXECUTE PR
 --
 
 CREATE TRIGGER t_users_bi BEFORE INSERT ON users FOR EACH ROW EXECUTE PROCEDURE t_users_bi();
+
+
+SET search_path = wa, pg_catalog;
+
+--
+-- Name: windows bi_windows_bi; Type: TRIGGER; Schema: wa; Owner: lt_admin
+--
+
+CREATE TRIGGER bi_windows_bi BEFORE INSERT ON windows FOR EACH ROW EXECUTE PROCEDURE t_windows_bi();
+
+
+--
+-- Name: activities t_activities_bi; Type: TRIGGER; Schema: wa; Owner: lt_admin
+--
+
+CREATE TRIGGER t_activities_bi BEFORE INSERT ON activities FOR EACH ROW EXECUTE PROCEDURE t_activities_bi();
+
+
+--
+-- Name: activities t_activities_bu; Type: TRIGGER; Schema: wa; Owner: lt_admin
+--
+
+CREATE TRIGGER t_activities_bu BEFORE UPDATE ON activities FOR EACH ROW EXECUTE PROCEDURE t_activities_bu();
+
+
+--
+-- Name: applications t_applications_bi; Type: TRIGGER; Schema: wa; Owner: lt_admin
+--
+
+CREATE TRIGGER t_applications_bi BEFORE INSERT ON applications FOR EACH ROW EXECUTE PROCEDURE t_applications_bi();
 
 
 SET search_path = mn, pg_catalog;
@@ -1810,6 +2046,40 @@ SET search_path = us, pg_catalog;
 
 ALTER TABLE ONLY computers
     ADD CONSTRAINT fk_computers__users FOREIGN KEY (user_id) REFERENCES users(user_id);
+
+
+SET search_path = wa, pg_catalog;
+
+--
+-- Name: activities fk_activities__computers; Type: FK CONSTRAINT; Schema: wa; Owner: lt_admin
+--
+
+ALTER TABLE ONLY activities
+    ADD CONSTRAINT fk_activities__computers FOREIGN KEY (user_id, computer_id) REFERENCES us.computers(user_id, computer_id);
+
+
+--
+-- Name: activities fk_activities__windows; Type: FK CONSTRAINT; Schema: wa; Owner: lt_admin
+--
+
+ALTER TABLE ONLY activities
+    ADD CONSTRAINT fk_activities__windows FOREIGN KEY (owner_id, application_id, window_id) REFERENCES windows(owner_id, application_id, window_id);
+
+
+--
+-- Name: applications fk_applications__users; Type: FK CONSTRAINT; Schema: wa; Owner: lt_admin
+--
+
+ALTER TABLE ONLY applications
+    ADD CONSTRAINT fk_applications__users FOREIGN KEY (owner_id) REFERENCES us.users(user_id);
+
+
+--
+-- Name: windows fk_windows__applications; Type: FK CONSTRAINT; Schema: wa; Owner: lt_admin
+--
+
+ALTER TABLE ONLY windows
+    ADD CONSTRAINT fk_windows__applications FOREIGN KEY (owner_id, application_id) REFERENCES applications(owner_id, application_id);
 
 
 --
