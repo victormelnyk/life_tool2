@@ -1,0 +1,11 @@
+{
+  "name": "lts",
+  "version": "1.0.0",
+  "description": "Life Tool Server",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Victor Melnyk",
+  "license": "MIT"
+}
