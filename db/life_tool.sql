@@ -2209,6 +2209,29 @@ ALTER TABLE ONLY windows
 
 
 --
+-- Name: mn; Type: ACL; Schema: -; Owner: lt_admin
+--
+
+GRANT USAGE ON SCHEMA mn TO lt_user;
+
+
+SET search_path = mn, pg_catalog;
+
+--
+-- Name: descriptions; Type: ACL; Schema: mn; Owner: lt_admin
+--
+
+GRANT SELECT,INSERT,UPDATE ON TABLE descriptions TO lt_user;
+
+
+--
+-- Name: operation_types; Type: ACL; Schema: mn; Owner: lt_admin
+--
+
+GRANT SELECT ON TABLE operation_types TO lt_user;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
