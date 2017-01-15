@@ -815,31 +815,31 @@ ALTER FUNCTION pm.t_tasks_bu() OWNER TO lt_admin;
 SET search_path = us, pg_catalog;
 
 --
--- Name: fn_get_logged_owner_id(); Type: FUNCTION; Schema: us; Owner: lt_admin
+-- Name: fn_get_logged_group_id(); Type: FUNCTION; Schema: us; Owner: lt_admin
 --
 
-CREATE FUNCTION fn_get_logged_owner_id() RETURNS df.t_id
+CREATE FUNCTION fn_get_logged_group_id() RETURNS df.t_id
     LANGUAGE plpgsql
     AS $$
 DECLARE
-  lowner_id df.t_id;
+  lgroup_id df.t_id;
 BEGIN
-  IF df.fn_temp_table_exist('tmp_logged_owners') THEN
-    SELECT LO.owner_id
-    INTO lowner_id
-    FROM tmp_logged_owners LO;
+  IF df.fn_temp_table_exist('tmp_logged_groups') THEN
+    SELECT LG.group_id
+    INTO lgroup_id
+    FROM tmp_logged_group LG;
   END IF;
 
-  IF (lowner_id IS NULL) THEN
-    RAISE EXCEPTION 'Owner not set';
+  IF (lgroup_id IS NULL) THEN
+    RAISE EXCEPTION 'Group not set';
   END IF;
 
-  RETURN lowner_id;
+  RETURN lgroup_id;
 END;
 $$;
 
 
-ALTER FUNCTION us.fn_get_logged_owner_id() OWNER TO lt_admin;
+ALTER FUNCTION us.fn_get_logged_group_id() OWNER TO lt_admin;
 
 --
 -- Name: fn_get_logged_user_id(); Type: FUNCTION; Schema: us; Owner: lt_admin
@@ -946,33 +946,33 @@ $$;
 ALTER FUNCTION us.fn_logon(alogin df.t_string_short, apassword t_password, OUT rlogon_result df.t_tinyint_id, OUT ruser_id df.t_id) OWNER TO lt_admin;
 
 --
--- Name: fn_set_logged_owner_id(df.t_id); Type: FUNCTION; Schema: us; Owner: lt_admin
+-- Name: fn_set_logged_group_id(df.t_id); Type: FUNCTION; Schema: us; Owner: lt_admin
 --
 
-CREATE FUNCTION fn_set_logged_owner_id(auser_id df.t_id) RETURNS void
+CREATE FUNCTION fn_set_logged_group_id(agroup_id df.t_id) RETURNS void
     LANGUAGE plpgsql
     AS $$
 DECLARE
-  lowner_id df.t_id;
+  lgroup_id df.t_id;
 BEGIN
-  DROP TABLE IF EXISTS tmp_logged_owners;
+  DROP TABLE IF EXISTS tmp_logged_groups;
 
-  SELECT U.user_id
-  INTO lowner_id
-  FROM us.users U
-  WHERE U.user_id = auser_id;
+  SELECT U.group_id
+  INTO lgroup_id
+  FROM us.groups G
+  WHERE G.group_id = agroup_id;
 
-  IF (lowner_id IS NULL) THEN
-    RAISE EXCEPTION 'User not exist';
+  IF (lgroup_id IS NULL) THEN
+    RAISE EXCEPTION 'Group not exist';
   ELSE
-    CREATE TEMPORARY TABLE tmp_logged_owners (owner_id df.t_id NOT NULL);
-    INSERT INTO tmp_logged_owners (owner_id) VALUES (lowner_id);
+    CREATE TEMPORARY TABLE tmp_logged_groups (group_id df.t_id NOT NULL);
+    INSERT INTO tmp_logged_groups (group_id) VALUES (lgroup_id);
   END IF;
 END;
 $$;
 
 
-ALTER FUNCTION us.fn_set_logged_owner_id(auser_id df.t_id) OWNER TO lt_admin;
+ALTER FUNCTION us.fn_set_logged_group_id(agroup_id df.t_id) OWNER TO lt_admin;
 
 --
 -- Name: fn_set_logged_user_id(df.t_id); Type: FUNCTION; Schema: us; Owner: lt_admin
@@ -1468,14 +1468,14 @@ CREATE TABLE users (
 ALTER TABLE users OWNER TO lt_admin;
 
 --
--- Name: vw_logged_owners; Type: VIEW; Schema: us; Owner: lt_admin
+-- Name: vw_logged_groups; Type: VIEW; Schema: us; Owner: lt_admin
 --
 
-CREATE VIEW vw_logged_owners AS
- SELECT fn_get_logged_owner_id() AS owner_id;
+CREATE VIEW vw_logged_groups AS
+ SELECT fn_get_logged_group_id() AS gropu_id;
 
 
-ALTER TABLE vw_logged_owners OWNER TO lt_admin;
+ALTER TABLE vw_logged_groups OWNER TO lt_admin;
 
 --
 -- Name: vw_logged_users; Type: VIEW; Schema: us; Owner: lt_admin
