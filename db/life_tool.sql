@@ -524,7 +524,7 @@ CREATE FUNCTION t_accounts_bi() RETURNS trigger
 BEGIN
   NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
-  NEW.account_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+  NEW.account_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME,
     'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id);
 
   RETURN NEW;
@@ -544,7 +544,7 @@ CREATE FUNCTION t_categories_bi() RETURNS trigger
 BEGIN
   NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
-  NEW.category_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+  NEW.category_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME,
     'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id);
   NEW.is_deleted = FALSE;
 
@@ -565,7 +565,7 @@ CREATE FUNCTION t_currencies_bi() RETURNS trigger
 BEGIN
   NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
-  NEW.currency_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+  NEW.currency_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME,
     'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id);
 
   RETURN NEW;
@@ -585,7 +585,7 @@ CREATE FUNCTION t_descriptions_bi() RETURNS trigger
 BEGIN
   NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
-  NEW.description_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+  NEW.description_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME,
     'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id);
 
   RETURN NEW;
@@ -632,7 +632,7 @@ CREATE FUNCTION t_transactions_bi() RETURNS trigger
 BEGIN
   NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
-  NEW.transaction_id = df.fn_get_next_random_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+  NEW.transaction_id = df.fn_get_next_random_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME,
     'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id, 1000, 9999);
 
   IF NEW.is_real IS NULL THEN
