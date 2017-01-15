@@ -2208,6 +2208,28 @@ ALTER TABLE ONLY windows
     ADD CONSTRAINT fk_windows__applications FOREIGN KEY (owner_id, application_id) REFERENCES applications(owner_id, application_id);
 
 
+SET search_path = mn, pg_catalog;
+
+--
+-- Name: descriptions; Type: ROW SECURITY; Schema: mn; Owner: lt_admin
+--
+
+ALTER TABLE descriptions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: descriptions descriptions_s; Type: POLICY; Schema: mn; Owner: lt_admin
+--
+
+CREATE POLICY descriptions_s ON descriptions FOR SELECT TO lt_user USING (((group_id)::integer = (us.fn_get_logged_group_id())::integer));
+
+
+--
+-- Name: df; Type: ACL; Schema: -; Owner: lt_admin
+--
+
+GRANT USAGE ON SCHEMA df TO lt_user;
+
+
 --
 -- Name: mn; Type: ACL; Schema: -; Owner: lt_admin
 --
@@ -2215,7 +2237,12 @@ ALTER TABLE ONLY windows
 GRANT USAGE ON SCHEMA mn TO lt_user;
 
 
-SET search_path = mn, pg_catalog;
+--
+-- Name: us; Type: ACL; Schema: -; Owner: lt_admin
+--
+
+GRANT USAGE ON SCHEMA us TO lt_user;
+
 
 --
 -- Name: descriptions; Type: ACL; Schema: mn; Owner: lt_admin
@@ -2229,6 +2256,15 @@ GRANT SELECT,INSERT,UPDATE ON TABLE descriptions TO lt_user;
 --
 
 GRANT SELECT ON TABLE operation_types TO lt_user;
+
+
+SET search_path = us, pg_catalog;
+
+--
+-- Name: groups; Type: ACL; Schema: us; Owner: lt_admin
+--
+
+GRANT SELECT,INSERT,UPDATE ON TABLE groups TO lt_user;
 
 
 --
