@@ -522,7 +522,10 @@ CREATE FUNCTION t_accounts_bi() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
+  NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
+  NEW.account_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+    'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id);
 
   RETURN NEW;
 END;
@@ -539,9 +542,10 @@ CREATE FUNCTION t_categories_bi() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
+  NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
-  NEW.category_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME,
-    'owner_id = ' || NEW.owner_id);
+  NEW.category_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+    'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id);
   NEW.is_deleted = FALSE;
 
   RETURN NEW;
@@ -559,7 +563,10 @@ CREATE FUNCTION t_currencies_bi() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
+  NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
+  NEW.currency_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+    'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id);
 
   RETURN NEW;
 END;
@@ -576,9 +583,10 @@ CREATE FUNCTION t_descriptions_bi() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
+  NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
-  NEW.description_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME,
-    'owner_id = ' || NEW.owner_id);
+  NEW.description_id = df.fn_get_next_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+    'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id);
 
   RETURN NEW;
 END;
@@ -595,9 +603,11 @@ CREATE FUNCTION t_operations_bi() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
+  NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
+
   NEW.lno = df.fn_get_next_field_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 'lno',
-    'owner_id = ' || NEW.owner_id);
+    'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id);
 
   NEW.is_deleted = FALSE;
   NEW.date_created = df.fn_utc_timestamp();
@@ -620,15 +630,21 @@ CREATE FUNCTION t_transactions_bi() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
+  NEW.group_id = us.fn_get_logged_group_id();
   NEW.user_id = us.fn_get_logged_user_id();
-  NEW.transaction_id = df.fn_get_next_random_pk_value(
-    TG_TABLE_SCHEMA, TG_TABLE_NAME, '', 1000, 9999);
-  NEW.lno = df.fn_get_next_field_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 'lno',
-    'owner_id = ' || NEW.owner_id);
+  NEW.transaction_id = df.fn_get_next_random_pk_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 
+    'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id, 1000, 9999);
 
   IF NEW.is_real IS NULL THEN
     NEW.is_real = TRUE;
   END IF;
+
+  IF NEW.date_transaction IS NULL THEN
+    NEW.date_transaction = df.fn_utc_timestamp();
+  END IF;
+
+  NEW.lno = df.fn_get_next_field_value(TG_TABLE_SCHEMA, TG_TABLE_NAME, 'lno',
+    'group_id = ' || NEW.group_id || ' AND user_id = ' || NEW.user_id);
 
   NEW.is_deleted = FALSE;
   NEW.date_created = df.fn_utc_timestamp();
