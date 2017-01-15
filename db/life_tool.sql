@@ -827,7 +827,7 @@ BEGIN
   IF df.fn_temp_table_exist('tmp_logged_groups') THEN
     SELECT LG.group_id
     INTO lgroup_id
-    FROM tmp_logged_group LG;
+    FROM tmp_logged_groups LG;
   END IF;
 
   IF (lgroup_id IS NULL) THEN
@@ -957,7 +957,7 @@ DECLARE
 BEGIN
   DROP TABLE IF EXISTS tmp_logged_groups;
 
-  SELECT U.group_id
+  SELECT G.group_id
   INTO lgroup_id
   FROM us.groups G
   WHERE G.group_id = agroup_id;
