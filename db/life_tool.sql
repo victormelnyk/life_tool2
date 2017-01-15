@@ -1208,11 +1208,11 @@ SET default_with_oids = false;
 --
 
 CREATE TABLE accounts (
+    group_id df.t_id NOT NULL,
     user_id df.t_id NOT NULL,
     account_id df.t_id NOT NULL,
     currency_id df.t_id NOT NULL,
-    name df.t_string_short NOT NULL,
-    group_id df.t_id NOT NULL
+    name df.t_string_short NOT NULL
 );
 
 
@@ -1223,12 +1223,12 @@ ALTER TABLE accounts OWNER TO lt_admin;
 --
 
 CREATE TABLE categories (
+    group_id df.t_id NOT NULL,
     user_id df.t_id NOT NULL,
     category_id df.t_id NOT NULL,
     parent_id df.t_id,
     name df.t_string_short NOT NULL,
-    is_deleted df.t_boolean NOT NULL,
-    group_id df.t_id NOT NULL
+    is_deleted df.t_boolean NOT NULL
 );
 
 
@@ -1239,10 +1239,10 @@ ALTER TABLE categories OWNER TO lt_admin;
 --
 
 CREATE TABLE currencies (
+    group_id df.t_id NOT NULL,
     user_id df.t_id NOT NULL,
     currency_id df.t_id NOT NULL,
-    name df.t_string_short NOT NULL,
-    group_id df.t_id NOT NULL
+    name df.t_string_short NOT NULL
 );
 
 
@@ -1253,10 +1253,10 @@ ALTER TABLE currencies OWNER TO lt_admin;
 --
 
 CREATE TABLE descriptions (
+    group_id df.t_id NOT NULL,
     user_id df.t_id NOT NULL,
     description_id df.t_id NOT NULL,
-    description df.t_text NOT NULL,
-    group_id df.t_id NOT NULL
+    description df.t_text NOT NULL
 );
 
 
@@ -1279,6 +1279,7 @@ ALTER TABLE operation_types OWNER TO lt_admin;
 --
 
 CREATE TABLE operations (
+    group_id df.t_id NOT NULL,
     user_id df.t_id NOT NULL,
     transaction_id df.t_id NOT NULL,
     operation_type_id df.t_tinyint_id NOT NULL,
@@ -1287,8 +1288,7 @@ CREATE TABLE operations (
     lno df.t_integer NOT NULL,
     is_deleted df.t_boolean NOT NULL,
     date_created df.t_timestamp NOT NULL,
-    sys_operation_id df.t_id NOT NULL,
-    group_id df.t_id NOT NULL
+    sys_operation_id df.t_id NOT NULL
 );
 
 
@@ -1299,17 +1299,17 @@ ALTER TABLE operations OWNER TO lt_admin;
 --
 
 CREATE TABLE transactions (
+    group_id df.t_id NOT NULL,
     user_id df.t_id NOT NULL,
     transaction_id df.t_id NOT NULL,
     category_id df.t_id NOT NULL,
     description_id df.t_id,
     is_real df.t_boolean NOT NULL,
-    lno df.t_integer NOT NULL,
     date_transaction df.t_timestamp NOT NULL,
+    lno df.t_integer NOT NULL,
     is_deleted df.t_boolean NOT NULL,
     date_created df.t_timestamp NOT NULL,
-    sys_transaction_id df.t_id NOT NULL,
-    group_id df.t_id NOT NULL
+    sys_transaction_id df.t_id NOT NULL
 );
 
 
@@ -1546,7 +1546,7 @@ SET search_path = mn, pg_catalog;
 --
 
 ALTER TABLE ONLY accounts
-    ADD CONSTRAINT pk_accounts PRIMARY KEY (user_id, account_id);
+    ADD CONSTRAINT pk_accounts PRIMARY KEY (group_id, user_id, account_id);
 
 
 --
@@ -1554,7 +1554,7 @@ ALTER TABLE ONLY accounts
 --
 
 ALTER TABLE ONLY categories
-    ADD CONSTRAINT pk_categories PRIMARY KEY (user_id, category_id);
+    ADD CONSTRAINT pk_categories PRIMARY KEY (group_id, user_id, category_id);
 
 
 --
@@ -1562,7 +1562,7 @@ ALTER TABLE ONLY categories
 --
 
 ALTER TABLE ONLY currencies
-    ADD CONSTRAINT pk_currencies PRIMARY KEY (user_id, currency_id);
+    ADD CONSTRAINT pk_currencies PRIMARY KEY (group_id, user_id, currency_id);
 
 
 --
@@ -1570,7 +1570,7 @@ ALTER TABLE ONLY currencies
 --
 
 ALTER TABLE ONLY descriptions
-    ADD CONSTRAINT pk_descriptions PRIMARY KEY (user_id, description_id);
+    ADD CONSTRAINT pk_descriptions PRIMARY KEY (group_id, user_id, description_id);
 
 
 --
@@ -1586,7 +1586,7 @@ ALTER TABLE ONLY operation_types
 --
 
 ALTER TABLE ONLY operations
-    ADD CONSTRAINT pk_operations PRIMARY KEY (user_id, transaction_id, operation_type_id);
+    ADD CONSTRAINT pk_operations PRIMARY KEY (group_id, user_id, transaction_id, operation_type_id);
 
 
 --
@@ -1594,7 +1594,7 @@ ALTER TABLE ONLY operations
 --
 
 ALTER TABLE ONLY transactions
-    ADD CONSTRAINT pk_transactions PRIMARY KEY (user_id, transaction_id);
+    ADD CONSTRAINT pk_transactions PRIMARY KEY (group_id, user_id, transaction_id);
 
 
 --
@@ -1602,7 +1602,7 @@ ALTER TABLE ONLY transactions
 --
 
 ALTER TABLE ONLY accounts
-    ADD CONSTRAINT uq_accounts__name UNIQUE (user_id, name);
+    ADD CONSTRAINT uq_accounts__name UNIQUE (group_id, user_id, name);
 
 
 --
@@ -1610,7 +1610,7 @@ ALTER TABLE ONLY accounts
 --
 
 ALTER TABLE ONLY categories
-    ADD CONSTRAINT uq_categories__name UNIQUE (user_id, name);
+    ADD CONSTRAINT uq_categories__name UNIQUE (group_id, user_id, name);
 
 
 --
@@ -1618,7 +1618,7 @@ ALTER TABLE ONLY categories
 --
 
 ALTER TABLE ONLY currencies
-    ADD CONSTRAINT uq_currencies__name UNIQUE (user_id, name);
+    ADD CONSTRAINT uq_currencies__name UNIQUE (group_id, user_id, name);
 
 
 --
@@ -1634,7 +1634,7 @@ ALTER TABLE ONLY descriptions
 --
 
 ALTER TABLE ONLY operations
-    ADD CONSTRAINT uq_operations__acount_id UNIQUE (user_id, transaction_id, account_id);
+    ADD CONSTRAINT uq_operations__acount_id UNIQUE (group_id, user_id, transaction_id, account_id);
 
 
 SET search_path = pm, pg_catalog;
@@ -1903,7 +1903,7 @@ SET search_path = mn, pg_catalog;
 --
 
 ALTER TABLE ONLY accounts
-    ADD CONSTRAINT fk_accounts__currencies FOREIGN KEY (user_id, currency_id) REFERENCES currencies(user_id, currency_id);
+    ADD CONSTRAINT fk_accounts__currencies FOREIGN KEY (group_id, user_id, currency_id) REFERENCES currencies(group_id, user_id, currency_id);
 
 
 --
@@ -1927,7 +1927,7 @@ ALTER TABLE ONLY accounts
 --
 
 ALTER TABLE ONLY categories
-    ADD CONSTRAINT fk_categories__categories FOREIGN KEY (user_id, parent_id) REFERENCES categories(user_id, category_id);
+    ADD CONSTRAINT fk_categories__categories FOREIGN KEY (group_id, user_id, parent_id) REFERENCES categories(group_id, user_id, category_id);
 
 
 --
@@ -1983,7 +1983,7 @@ ALTER TABLE ONLY descriptions
 --
 
 ALTER TABLE ONLY operations
-    ADD CONSTRAINT fk_operations__accounts FOREIGN KEY (user_id, account_id) REFERENCES accounts(user_id, account_id);
+    ADD CONSTRAINT fk_operations__accounts FOREIGN KEY (group_id, user_id, account_id) REFERENCES accounts(group_id, user_id, account_id);
 
 
 --
@@ -2007,7 +2007,7 @@ ALTER TABLE ONLY operations
 --
 
 ALTER TABLE ONLY operations
-    ADD CONSTRAINT fk_operations__transactions FOREIGN KEY (user_id, transaction_id) REFERENCES transactions(user_id, transaction_id);
+    ADD CONSTRAINT fk_operations__transactions FOREIGN KEY (group_id, user_id, transaction_id) REFERENCES transactions(group_id, user_id, transaction_id);
 
 
 --
@@ -2023,7 +2023,7 @@ ALTER TABLE ONLY operations
 --
 
 ALTER TABLE ONLY transactions
-    ADD CONSTRAINT fk_transactions__categories FOREIGN KEY (user_id, category_id) REFERENCES categories(user_id, category_id);
+    ADD CONSTRAINT fk_transactions__categories FOREIGN KEY (group_id, user_id, category_id) REFERENCES categories(group_id, user_id, category_id);
 
 
 --
@@ -2031,7 +2031,7 @@ ALTER TABLE ONLY transactions
 --
 
 ALTER TABLE ONLY transactions
-    ADD CONSTRAINT fk_transactions__descriptions FOREIGN KEY (user_id, description_id) REFERENCES descriptions(user_id, description_id);
+    ADD CONSTRAINT fk_transactions__descriptions FOREIGN KEY (group_id, user_id, description_id) REFERENCES descriptions(group_id, user_id, description_id);
 
 
 --
